@@ -1,1 +1,17 @@
+# Tests
 pytest
+
+# Data pipeline notebook (notebooks/01_build_catalog.ipynb)
+jupyter
+pandas
+pyarrow            # Parquet files in data/interim/
+requests
+python-dotenv      # reads .env
+kaggle             # optional: downloads the MuSe CSV
+lyricsgenius
+langdetect
+transformers       # lyric emotion classifier
+torch
+scikit-learn
+joblib
+matplotlib

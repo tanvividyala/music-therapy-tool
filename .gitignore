@@ -13,3 +13,9 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Datasets dropped straight into data/ (not ours to redistribute)
+data/*.csv
