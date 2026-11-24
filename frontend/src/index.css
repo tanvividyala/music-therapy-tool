@@ -17,7 +17,8 @@ nav {
   font-size: 0.9em;
 }
 footer {
-  margin-top: 32px;
+  max-width: 760px;
+  margin: 32px auto 0;
   font-size: 0.8em;
   opacity: 0.75;
 }
