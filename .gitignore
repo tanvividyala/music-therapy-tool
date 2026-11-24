@@ -1,0 +1,15 @@
+# Raw data and caches (large, and not ours to redistribute)
+data/raw/
+data/interim/
+
+# Databases built locally
+*.db
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
