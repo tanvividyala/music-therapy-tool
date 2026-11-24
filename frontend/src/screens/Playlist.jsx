@@ -25,6 +25,15 @@ export default function Playlist({ result, goalName, blinded, loggedIn, onSave, 
       <p className="muted">
         {playlist.length} tracks, {fmtMin(total)} total. Generated in {(elapsedMs / 1000).toFixed(2)} s.
       </p>
+      {/* TEMPORARY: which mood model and catalog produced this playlist. */}
+      <p className="muted">
+        Mood model: <strong>{result.model === 'learned' ? 'Learned (gradient boosting)' : 'Rules (literature-based)'}</strong>
+        {' · '}
+        {result.catalogSource === 'catalog'
+          ? `catalog of ${result.catalogSize.toLocaleString()} MuSe songs`
+          : `sample catalog (${result.catalogSize} hand-picked songs; catalog.json not found)`}
+        . Toggle the model in the top-right corner and start over to compare.
+      </p>
       {!blinded && (
         <MoodGrid
           path={playlist.map((t) => [t.valence, t.arousal])}

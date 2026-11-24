@@ -12,8 +12,18 @@ import Playlist from './screens/Playlist.jsx'
 import Session from './screens/Session.jsx'
 import { Debrief, PilotResults } from './screens/Pilot.jsx'
 import { Crisis, Disclaimer, Login } from './screens/Simple.jsx'
+import ModelToggle from './components/ModelToggle.jsx'
 
 const MODE_KEY = 'muiso.mode' // 'spotify' | 'demo'
+const MODEL_KEY = 'muiso.moodModel' // TEMPORARY testing toggle: 'rules' | 'learned'
+
+function readModel() {
+  try {
+    return localStorage.getItem(MODEL_KEY) === 'learned' ? 'learned' : 'rules'
+  } catch {
+    return 'rules'
+  }
+}
 
 export default function App() {
   const [user, setUser] = useState(null) // { id, name, spotify: bool }
@@ -22,6 +32,16 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [session, setSession] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [moodModel, setMoodModel] = useState(readModel)
+
+  function chooseModel(m) {
+    setMoodModel(m)
+    try {
+      localStorage.setItem(MODEL_KEY, m)
+    } catch {
+      // storage unavailable (private mode): the toggle still works for this visit
+    }
+  }
 
   const enter = useCallback((u) => {
     setUser(u)
@@ -87,7 +107,7 @@ export default function App() {
     setBusy(true)
     try {
       const condition = answers.consent ? store.nextCondition(user.id) : 'ordered'
-      const res = await generatePlaylist(answers)
+      const res = await generatePlaylist(answers, { model: moodModel })
       if (condition === 'shuffled') {
         res.playlist = shuffled(res.playlist).map((t) => ({ ...t, explanation: explain(t, t.stage, res.start, res.goal) }))
       }
@@ -95,6 +115,7 @@ export default function App() {
         ...base,
         crisis_shown: false,
         condition,
+        mood_model: res.model, // TEMPORARY: which estimate ordered this playlist
         items: res.playlist.map((t, position) => ({ position, song_id: t.song_id, explanation: t.explanation })),
       }
       store.saveSession(user.id, s)
@@ -150,6 +171,7 @@ export default function App() {
 
   return (
     <main>
+      <ModelToggle value={moodModel} onChange={chooseModel} />
       {user && (
         <nav>
           <span>Signed in as {user.name}{!user.spotify && ' (demo)'}</span> ·{' '}

@@ -69,3 +69,17 @@ describe('generatePlaylist on the mock catalog (FR-3, NFR-1, NFR-5)', () => {
     }
   }
 })
+
+describe('mood model toggle (temporary)', () => {
+  it('withMoodModel swaps valence/arousal and leaves the input unchanged', async () => {
+    const { withMoodModel } = await import('./catalog.js')
+    const songs = [{ song_id: 1, valence: 0, arousal: 0, mood: { rules: [0.1, -0.2], learned: [0.5, 0.6] } }, { song_id: 2, valence: 0.3, arousal: 0.4 }]
+    const before = JSON.stringify(songs)
+    const r = withMoodModel(songs, 'rules')
+    const l = withMoodModel(songs, 'learned')
+    expect([r[0].valence, r[0].arousal, r[0].est_arousal]).toEqual([0.1, -0.2, -0.2])
+    expect([l[0].valence, l[0].arousal]).toEqual([0.5, 0.6])
+    expect(r[1]).toEqual(songs[1]) // no mood estimates -> unchanged (mock catalog)
+    expect(JSON.stringify(songs)).toBe(before)
+  })
+})
