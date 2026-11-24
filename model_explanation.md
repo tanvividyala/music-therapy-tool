@@ -123,15 +123,22 @@ Muiso has two ways to turn a song's inputs into `est_valence` and `est_arousal`.
 | Strengths | Every score can be explained; based on published findings; behaves the same on any song; BPM counted only once | Agrees more closely with MuSe; picks up genre and combinations of features the rules can't |
 | Weaknesses | Hand-picked weights; ignores genre | Hard to explain; inherits MuSe's biases (Last.fm tags, popular Western music); relies on genre, which may not transfer from MuSe's genre names to Spotify's; uses BPM, so BPM counts twice once it reaches the calm score |
 
-**How they compare so far.** Agreement with MuSe on held-out songs, from the first full run (3,196 songs, **no lyrics**, because the Genius token wasn't set yet):
+**How they compare so far.** Agreement with MuSe on held-out songs (20% of each run):
 
 | Model | Arousal rank correlation | Valence rank correlation | Arousal R² | Valence R² |
 |---|---|---|---|---|
+| *Run 1: 3,196 songs, no lyrics (Genius token not set yet)* | | | | |
 | Predict-the-average baseline | – | – | 0.00 | 0.00 |
 | Rules | 0.26 | 0.19 | – | – |
-| Learned (gradient boosting) | 0.34 | 0.27 | 0.11 | 0.06 |
+| Learned (gradient boosting, the best then) | 0.34 | 0.27 | 0.11 | 0.06 |
+| *Run 2: 1,219 songs, 792 with lyric scores* | | | | |
+| Predict-the-average baseline | – | – | 0.00 | 0.00 |
+| Rules | 0.25 | **0.29** | – | – |
+| Learned (ridge regression, the best now) | 0.31 | **0.37** | 0.07 | 0.13 |
 
-The learned model agrees more with MuSe, but both explain only a small share of MuSe's variation. These numbers will be updated with the run that includes lyrics. The rules are the default (`MOOD_METHOD = "rules"` in the notebook). The notebook would only switch to the learned model if it were clearly better: at least 0.10 higher mean rank correlation and a mean R² of at least 0.2.
+Adding lyrics raised valence agreement for both models, which is where audio alone falls short. The runs use different samples, so the change is indicative, not exact. The learned model still agrees more with MuSe, but by less than the 0.10 bar below, and both explain only a small share of MuSe's variation. The rules have no R² listed because they aren't on MuSe's scale (they use the full mood grid, while most MuSe scores sit near the middle), so only their ranking is comparable. The rules are the default (`MOOD_METHOD = "rules"` in the notebook).
+
+For the app, the learned model's estimates are stretched linearly to the same spread as the rules'. Otherwise they would cluster near the middle of the grid and never reach route endpoints such as Sleep's arousal of -0.8. The stretch keeps their ordering. The notebook would only switch to the learned model if it were clearly better: at least 0.10 higher mean rank correlation and a mean R² of at least 0.2.
 
 **Why MuSe can't settle the choice alone.** MuSe records how Last.fm users *tag* songs, not how songs affect listeners, and many songs have only a few tags. A model can match MuSe better and still order a playlist worse. So the next step is a human check.
 
