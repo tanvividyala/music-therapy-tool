@@ -1,0 +1,203 @@
+// Screen flow (NFR-4: login -> disclaimer -> questionnaire -> playlist -> session, 5 screens):
+//   login (FR-1) -> disclaimer (NFR-3, first time only) -> questionnaire (FR-2)
+//   -> crisis (FR-2) | playlist (FR-3, FR-5) -> session (FR-4) -> debrief (FR-6)
+import { useCallback, useEffect, useState } from 'react'
+import { generatePlaylist } from './logic/api.js'
+import { explain, shuffled } from './logic/planner.js'
+import { isDistress } from './logic/questionnaire.js'
+import * as spotify from './spotify.js'
+import * as store from './storage.js'
+import Questionnaire from './screens/Questionnaire.jsx'
+import Playlist from './screens/Playlist.jsx'
+import Session from './screens/Session.jsx'
+import { Debrief, PilotResults } from './screens/Pilot.jsx'
+import { Crisis, Disclaimer, Login } from './screens/Simple.jsx'
+
+const MODE_KEY = 'muiso.mode' // 'spotify' | 'demo'
+
+export default function App() {
+  const [user, setUser] = useState(null) // { id, name, spotify: bool }
+  const [screen, setScreen] = useState('loading')
+  const [error, setError] = useState(null)
+  const [result, setResult] = useState(null)
+  const [session, setSession] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  const enter = useCallback((u) => {
+    setUser(u)
+    setScreen(store.hasAcknowledged(u.id) ? 'questionnaire' : 'disclaimer')
+  }, [])
+
+  // FR-1: on load, finish a login redirect or restore the saved login.
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const fresh = await spotify.handleRedirect()
+        if (fresh) localStorage.setItem(MODE_KEY, 'spotify')
+        const mode = localStorage.getItem(MODE_KEY)
+        if (mode === 'spotify' && spotify.hasToken()) {
+          const me = await spotify.getMe()
+          return enter({ id: me.id, name: me.display_name || me.id, spotify: true })
+        }
+        if (mode === 'demo') return enter({ id: 'demo', name: 'Demo user', spotify: false })
+      } catch (e) {
+        setError(e.message)
+        spotify.logout()
+        localStorage.removeItem(MODE_KEY)
+      }
+      setScreen('login')
+    })()
+  }, [enter])
+
+  function logout() {
+    spotify.logout()
+    localStorage.removeItem(MODE_KEY)
+    setUser(null)
+    setResult(null)
+    setScreen('login')
+  }
+
+  function deleteData() {
+    if (!window.confirm('Delete all your Muiso answers and mood ratings from this device?')) return
+    store.clearUserData(user.id)
+    logout()
+  }
+
+  async function submitQuestionnaire(answers) {
+    const base = {
+      session_id: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+      consent: answers.consent,
+      pre_valence: answers.mood[0],
+      pre_arousal: answers.mood[1],
+      pre_stress: answers.stress,
+      goal: answers.goal,
+      post_valence: null,
+      post_arousal: null,
+      post_stress: null,
+    }
+
+    // FR-2 / FT-2: crisis screen instead of a playlist; no playlist items stored.
+    if (isDistress(answers)) {
+      store.saveSession(user.id, { ...base, crisis_shown: true, condition: null, items: [] })
+      setScreen('crisis')
+      return
+    }
+
+    setBusy(true)
+    try {
+      const condition = answers.consent ? store.nextCondition(user.id) : 'ordered'
+      const res = await generatePlaylist(answers)
+      if (condition === 'shuffled') {
+        res.playlist = shuffled(res.playlist).map((t) => ({ ...t, explanation: explain(t, t.stage, res.start, res.goal) }))
+      }
+      const s = {
+        ...base,
+        crisis_shown: false,
+        condition,
+        items: res.playlist.map((t, position) => ({ position, song_id: t.song_id, explanation: t.explanation })),
+      }
+      store.saveSession(user.id, s)
+      setSession(s)
+      setResult({ ...res, goalName: answers.goal })
+      setScreen('playlist')
+      if (user.spotify) resolveTracks(res.playlist)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Look up Spotify IDs in the background so playback and saving can use them.
+  async function resolveTracks(playlist) {
+    const ids = await Promise.all(playlist.map((t) => spotify.resolveTrack(t).catch(() => null)))
+    setResult((r) => r && { ...r, playlist: r.playlist.map((t, i) => ({ ...t, spotify_id: ids[i] })) })
+  }
+
+  async function save() {
+    const tracks = result.playlist
+    const ids = await Promise.all(tracks.map((t) => t.spotify_id || spotify.resolveTrack(t).catch(() => null)))
+    const found = ids.filter(Boolean)
+    if (found.length === 0) throw new Error('None of the tracks were found on Spotify')
+    const date = new Date().toLocaleDateString()
+    const pl = await spotify.savePlaylist(
+      `Muiso: ${result.goalName} (${date})`,
+      `Made by Muiso. Moves from how you felt toward ${result.goalName.toLowerCase()}.`,
+      found,
+    )
+    return {
+      url: pl.external_urls?.spotify,
+      missing: tracks.filter((_, i) => !ids[i]).map((t) => t.title),
+    }
+  }
+
+  function submitDebrief(d) {
+    store.updateSession(user.id, session.session_id, {
+      post_valence: d.mood[0],
+      post_arousal: d.mood[1],
+      post_stress: d.stress,
+      debrief_skipped: false,
+    })
+    // FR-6: distress-level debrief answers also trigger crisis resources.
+    setScreen(isDistress(d) ? 'crisis' : 'pilot')
+  }
+
+  function skipDebrief() {
+    store.updateSession(user.id, session.session_id, { debrief_skipped: true })
+    setScreen('pilot')
+  }
+
+  const blinded = session?.consent // pilot testers don't see stage cues that reveal the condition
+
+  return (
+    <main>
+      {user && (
+        <nav>
+          <span>Signed in as {user.name}{!user.spotify && ' (demo)'}</span> ·{' '}
+          <button className="link" onClick={() => setScreen('questionnaire')}>New session</button> ·{' '}
+          <button className="link" onClick={() => setScreen('pilot')}>Pilot results</button> ·{' '}
+          <button className="link" onClick={deleteData}>Delete my data</button> ·{' '}
+          <button className="link" onClick={logout}>Log out</button>
+        </nav>
+      )}
+      {screen === 'loading' && <p>Loading…</p>}
+      {screen === 'login' && (
+        <Login
+          error={error}
+          onSpotify={() => spotify.login()}
+          onDemo={() => {
+            localStorage.setItem(MODE_KEY, 'demo')
+            enter({ id: 'demo', name: 'Demo user', spotify: false })
+          }}
+        />
+      )}
+      {screen === 'disclaimer' && (
+        <Disclaimer
+          onAccept={() => {
+            store.acknowledge(user.id)
+            setScreen('questionnaire')
+          }}
+        />
+      )}
+      {screen === 'questionnaire' && (
+        <Questionnaire onSubmit={submitQuestionnaire} busy={busy} loadTaste={user.spotify ? spotify.topArtistsAndGenres : null} />
+      )}
+      {screen === 'crisis' && <Crisis onBack={() => setScreen('questionnaire')} />}
+      {screen === 'playlist' && result && (
+        <Playlist
+          result={result}
+          goalName={result.goalName}
+          blinded={blinded}
+          loggedIn={user.spotify}
+          onSave={save}
+          onStart={() => setScreen('session')}
+          onRestart={() => setScreen('questionnaire')}
+        />
+      )}
+      {screen === 'session' && result && (
+        <Session result={result} blinded={blinded} onEnd={() => setScreen('debrief')} />
+      )}
+      {screen === 'debrief' && <Debrief onSubmit={submitDebrief} onSkip={skipDebrief} />}
+      {screen === 'pilot' && <PilotResults sessions={store.getSessions(user.id)} onBack={() => setScreen('questionnaire')} />}
+    </main>
+  )
+}
