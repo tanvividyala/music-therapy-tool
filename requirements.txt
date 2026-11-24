@@ -8,7 +8,7 @@ pyarrow            # Parquet files in data/interim/
 requests
 python-dotenv      # reads .env
 kaggle             # optional: downloads the MuSe CSV
-lyricsgenius
+lyricsgenius==3.18.1   # 3.18 removed the verbose= option
 langdetect
 transformers       # lyric emotion classifier
 torch
