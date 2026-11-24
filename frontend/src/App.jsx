@@ -198,6 +198,10 @@ export default function App() {
       )}
       {screen === 'debrief' && <Debrief onSubmit={submitDebrief} onSkip={skipDebrief} />}
       {screen === 'pilot' && <PilotResults sessions={store.getSessions(user.id)} onBack={() => setScreen('questionnaire')} />}
+      {/* Attribution required by the GetSongBPM API terms: a visible backlink on every page. */}
+      <footer>
+        Tempo data provided by <a href="https://getsongbpm.com">GetSongBPM</a>.
+      </footer>
     </main>
   )
 }

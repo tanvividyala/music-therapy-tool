@@ -16,6 +16,11 @@ nav {
   margin-bottom: 16px;
   font-size: 0.9em;
 }
+footer {
+  margin-top: 32px;
+  font-size: 0.8em;
+  opacity: 0.75;
+}
 button.link {
   background: none;
   border: none;
