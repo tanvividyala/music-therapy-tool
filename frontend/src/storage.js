@@ -35,7 +35,8 @@ export function updateSession(u, sessionId, patch) {
 }
 
 /** FR-6: blinded, random condition order. First pilot session gets a random
- * condition; the second gets the other one. The user is never told which. */
+ * condition; the second gets the other one. The user is never told which.
+ * SHELVED: unused while the pilot is paused. */
 export function nextCondition(u) {
   const done = getSessions(u).filter((s) => s.consent && s.condition && !s.crisis_shown)
   if (done.length === 0) return Math.random() < 0.5 ? 'ordered' : 'shuffled'

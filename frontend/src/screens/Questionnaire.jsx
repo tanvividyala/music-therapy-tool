@@ -24,7 +24,6 @@ export default function Questionnaire({ onSubmit, loadTaste, busy }) {
   const [length, setLength] = useState(30)
   const [genres, setGenres] = useState('')
   const [artists, setArtists] = useState([])
-  const [consent, setConsent] = useState(false)
 
   // Step 6: pre-fill from Spotify when logged in.
   useEffect(() => {
@@ -55,7 +54,6 @@ export default function Questionnaire({ onSubmit, loadTaste, busy }) {
       texture,
       length,
       genres: genres.split(',').map((g) => g.trim()).filter(Boolean),
-      consent,
     })
   }
 
@@ -171,15 +169,6 @@ export default function Questionnaire({ onSubmit, loadTaste, busy }) {
             />
           </label>
           {artists.length > 0 && <p className="muted">Your top artists on Spotify: {artists.join(', ')}</p>}
-        </fieldset>
-
-        <fieldset className="step">
-          <legend>Pilot study (optional)</legend>
-          <label className="check">
-            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} /> I agree to take
-            part in the Muiso mood pilot. My before and after mood ratings are recorded on this device to compare
-            sessions. This is a small feasibility pilot, not a clinical trial.
-          </label>
         </fieldset>
 
         <div className="submit-bar">

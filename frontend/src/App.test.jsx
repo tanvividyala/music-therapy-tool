@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // Smoke test of the demo-mode flow: NFR-3 disclaimer gate, FR-2 crisis screen,
-// FR-3 playlist with explanations, FR-4 stage label updates, FR-6 skipped debrief.
+// FR-3 playlist with explanations, FR-4 stage label updates.
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it } from 'vitest'
 import App from './App.jsx'
@@ -41,7 +41,7 @@ it('FT-2: distress answers show crisis resources, no playlist', async () => {
   expect(screen.queryByText(/Your Calm playlist/)).toBeNull()
 })
 
-it('FT-1: questionnaire to playlist, session stage changes, skip debrief', async () => {
+it('FT-1: questionnaire to playlist, session stage changes, end returns to playlist', async () => {
   await toQuestionnaire()
   clickGrid(78, 52) // about (-0.4, +0.6)
   answerWellbeing(false)
@@ -59,6 +59,6 @@ it('FT-1: questionnaire to playlist, session stage changes, skip debrief', async
   expect(screen.getByTestId('stage-label').textContent).toMatch(/SETTLE/)
   expect(screen.getByTestId('commentary').textContent).not.toBe(firstComment)
   fireEvent.click(screen.getByText('End session'))
-  fireEvent.click(screen.getByText('Skip'))
-  expect(await screen.findByText(/Mood pilot/)).toBeTruthy()
+  expect(await screen.findByText(/Your Calm playlist/)).toBeTruthy()
+  expect(screen.queryByText(/Pilot/)).toBeNull()
 })

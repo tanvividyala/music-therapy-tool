@@ -1,4 +1,5 @@
 // FR-6: optional post-session debrief and pilot comparison.
+// SHELVED: not rendered by App.jsx. Kept for when the mood pilot resumes.
 import { useState } from 'react'
 import MoodGrid from '../components/MoodGrid.jsx'
 import { WELLBEING_ITEMS } from '../config.js'

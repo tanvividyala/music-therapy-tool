@@ -11,8 +11,8 @@ music-therapy-tool/
 │   ├── index.html             Page shell, including the GetSongBPM credit link
 │   ├── public/catalog.json    Song catalog exported by the notebook (no lyric text)
 │   └── src/
-│       ├── App.jsx            Screen flow: login → disclaimer → questionnaire → playlist → session → debrief
-│       ├── screens/           One file per screen (questionnaire, playlist, guided session, pilot, crisis)
+│       ├── App.jsx            Screen flow: login → disclaimer → questionnaire → playlist → session
+│       ├── screens/           One file per screen (questionnaire, playlist, guided session, crisis; Pilot.jsx is shelved)
 │       ├── components/        Mood grid, and the temporary Rules/Learned model toggle
 │       ├── logic/             JavaScript ports of the Python logic: scoring, playlist ordering,
 │       │                      distress check, and catalog loading
