@@ -2,24 +2,30 @@
 import { useState } from 'react'
 import MoodGrid from '../components/MoodGrid.jsx'
 import { WELLBEING_ITEMS } from '../config.js'
+import { RESTING, RESTING_GOAL, useAura } from '../aura.js'
 
 export function Debrief({ onSubmit, onSkip }) {
   const [mood, setMood] = useState(null)
   const [stress, setStress] = useState(5)
   const [wellbeing, setWellbeing] = useState(WELLBEING_ITEMS.map(() => false))
+  useAura(mood || RESTING, mood || RESTING)
   return (
-    <section>
-      <h2>Quick debrief (optional)</h2>
-      <p>How are you feeling now that the session is over?</p>
-      <MoodGrid value={mood} onChange={setMood} />
-      <label>
-        Stress level now: <strong>{stress}</strong> / 10
-        <br />
+    <section className="debrief">
+      <div className="debrief-grid">
+        <h2>Quick debrief (optional)</h2>
+        <p>How are you feeling now that the session is over?</p>
+        <MoodGrid value={mood} onChange={setMood} />
+      </div>
+      <div className="debrief-form">
+      <label className="range">
+        <span>
+          Stress level now: <strong className="num">{stress}</strong> / 10
+        </span>
         <input type="range" min={1} max={10} value={stress} onChange={(e) => setStress(Number(e.target.value))} />
       </label>
       {WELLBEING_ITEMS.map((item, i) => (
         <div key={item.id}>
-          <label>
+          <label className="check">
             <input
               type="checkbox"
               checked={wellbeing[i]}
@@ -29,9 +35,10 @@ export function Debrief({ onSubmit, onSkip }) {
           </label>
         </div>
       ))}
-      <div style={{ marginTop: 12 }}>
-        <button disabled={!mood} onClick={() => onSubmit({ mood, stress, wellbeingFlags: wellbeing })}>Submit</button>{' '}
-        <button onClick={onSkip}>Skip</button>
+      <div className="actions">
+        <button type="button" className="btn btn-primary" disabled={!mood} onClick={() => onSubmit({ mood, stress, wellbeingFlags: wellbeing })}>Submit</button>
+        <button type="button" className="btn btn-quiet" onClick={onSkip}>Skip</button>
+      </div>
       </div>
     </section>
   )
@@ -55,18 +62,20 @@ export function PilotResults({ sessions, onBack }) {
   const latest = (cond) => [...pilot].reverse().find((s) => s.condition === cond && moodChange(s))
   const o = latest('ordered')
   const sh = latest('shuffled')
+  useAura(RESTING, RESTING_GOAL)
   const diff = o && sh ? Object.fromEntries(Object.keys(moodChange(o)).map((k) => [k, moodChange(o)[k] - moodChange(sh)[k]])) : null
 
   return (
-    <section>
+    <section className="pilot">
       <h2>Mood pilot</h2>
       <p className="muted">
         Small feasibility pilot, not clinical evidence. Complete one session on one day and another on a different day;
         Muiso assigns ordered or shuffled at random without telling you which.
       </p>
-      <p>Pilot sessions: {pilot.length}. Skipped debriefs: {skipped}.</p>
+      <p className="num">Pilot sessions: {pilot.length}. Skipped debriefs: {skipped}.</p>
       {pilot.length > 0 && (
-        <table border="1" cellPadding="4">
+        <div className="table-wrap">
+        <table className="table">
           <thead>
             <tr>
               <th>Date</th><th>Goal</th><th>Condition</th><th>Pre (V, A, stress)</th><th>Post (V, A, stress)</th><th>Change (V, A, stress)</th>
@@ -80,14 +89,15 @@ export function PilotResults({ sessions, onBack }) {
                   <td>{new Date(s.created_at).toLocaleString()}</td>
                   <td>{s.goal}</td>
                   <td>{s.condition}</td>
-                  <td>{r2(s.pre_valence)}, {r2(s.pre_arousal)}, {s.pre_stress}</td>
-                  <td>{s.debrief_skipped ? 'skipped' : `${r2(s.post_valence)}, ${r2(s.post_arousal)}, ${s.post_stress ?? '–'}`}</td>
-                  <td>{c ? `${signed(c.valence)}, ${signed(c.arousal)}, ${signed(c.stress)}` : '–'}</td>
+                  <td className="num">{r2(s.pre_valence)}, {r2(s.pre_arousal)}, {s.pre_stress}</td>
+                  <td className="num">{s.debrief_skipped ? 'skipped' : `${r2(s.post_valence)}, ${r2(s.post_arousal)}, ${s.post_stress ?? '–'}`}</td>
+                  <td className="num">{c ? `${signed(c.valence)}, ${signed(c.arousal)}, ${signed(c.stress)}` : '–'}</td>
                 </tr>
               )
             })}
           </tbody>
         </table>
+        </div>
       )}
       <h3>Ordered vs shuffled</h3>
       {diff ? (
@@ -98,7 +108,9 @@ export function PilotResults({ sessions, onBack }) {
       ) : (
         <p className="muted">Needs one completed debrief in each condition.</p>
       )}
-      <button onClick={onBack}>Back</button>
+      <div className="actions">
+        <button type="button" className="btn btn-secondary" onClick={onBack}>Back</button>
+      </div>
     </section>
   )
 }

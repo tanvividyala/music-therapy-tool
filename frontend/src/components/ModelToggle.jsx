@@ -10,6 +10,7 @@ export default function ModelToggle({ value, onChange }) {
       <span className="model-toggle-title">Mood model</span>
       {MOOD_MODELS.map((m) => (
         <button
+          type="button"
           key={m}
           role="radio"
           aria-checked={value === m}

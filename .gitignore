@@ -22,3 +22,6 @@ data/*.csv
 
 # Saved models (built by the notebook)
 models/
+
+# Hallmark design-lint output (screenshots, salt)
+.hallmark/

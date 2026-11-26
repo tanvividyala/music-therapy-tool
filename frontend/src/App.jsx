@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { generatePlaylist } from './logic/api.js'
 import { explain, shuffled } from './logic/planner.js'
 import { isDistress } from './logic/questionnaire.js'
+import { estimateMood } from './logic/mood.js'
+import { fetchLyricScores } from './logic/lyrics.js'
 import * as spotify from './spotify.js'
 import * as store from './storage.js'
 import Questionnaire from './screens/Questionnaire.jsx'
@@ -107,7 +109,17 @@ export default function App() {
     setBusy(true)
     try {
       const condition = answers.consent ? store.nextCondition(user.id) : 'ordered'
-      const res = await generatePlaylist(answers, { model: moodModel })
+      // FR-3: the user's own listening leads when they are signed in to Spotify.
+      // FR-3: the user's own listening leads when they are signed in to Spotify,
+      // searched in rounds until it covers the mood path.
+      const taste = user.spotify ? await spotify.tasteExplorer(estimateMood, answers.genres).start().catch(() => null) : null
+      const res = await generatePlaylist(answers, {
+        model: moodModel,
+        personal: taste ? [...taste.songs] : [],
+        expand: taste ? () => taste.more().catch(() => null) : null,
+        taste: taste?.taste,
+        scoreLyrics: fetchLyricScores,
+      })
       if (condition === 'shuffled') {
         res.playlist = shuffled(res.playlist).map((t) => ({ ...t, explanation: explain(t, t.stage, res.start, res.goal) }))
       }
@@ -128,10 +140,14 @@ export default function App() {
     }
   }
 
-  // Look up Spotify IDs in the background so playback and saving can use them.
+  // Look up Spotify IDs and album covers in the background so playback,
+  // saving and the track list can use them.
   async function resolveTracks(playlist) {
-    const ids = await Promise.all(playlist.map((t) => spotify.resolveTrack(t).catch(() => null)))
-    setResult((r) => r && { ...r, playlist: r.playlist.map((t, i) => ({ ...t, spotify_id: ids[i] })) })
+    const info = await Promise.all(playlist.map((t) => spotify.trackInfo(t).catch(() => ({ id: null, image: null }))))
+    setResult((r) => r && {
+      ...r,
+      playlist: r.playlist.map((t, i) => ({ ...t, spotify_id: info[i].id || t.spotify_id || null, image: info[i].image || t.image || null })),
+    })
   }
 
   async function save() {
@@ -170,18 +186,23 @@ export default function App() {
   const blinded = session?.consent // pilot testers don't see stage cues that reveal the condition
 
   return (
-    <main>
+    <main className={`app screen-${screen}`}>
+      {/* The aura: two still blooms coloured by mood (aura.js, useAura). */}
+      <div id="aura" className="aura" aria-hidden="true" data-state="off" />
       <ModelToggle value={moodModel} onChange={chooseModel} />
       {user && (
-        <nav>
-          <span>Signed in as {user.name}{!user.spotify && ' (demo)'}</span> ·{' '}
-          <button className="link" onClick={() => setScreen('questionnaire')}>New session</button> ·{' '}
-          <button className="link" onClick={() => setScreen('pilot')}>Pilot results</button> ·{' '}
-          <button className="link" onClick={deleteData}>Delete my data</button> ·{' '}
-          <button className="link" onClick={logout}>Log out</button>
-        </nav>
+        <header className="topbar">
+          <span className="wordmark">Muiso</span>
+          <nav className="topbar-nav" aria-label="Account">
+            <span className="topbar-user">Signed in as {user.name}{!user.spotify && ' (demo)'}</span>
+            <button type="button" className="link" onClick={() => setScreen('questionnaire')}>New session</button>
+            <button type="button" className="link" onClick={() => setScreen('pilot')}>Pilot results</button>
+            <button type="button" className="link" onClick={deleteData}>Delete my data</button>
+            <button type="button" className="link" onClick={logout}>Log out</button>
+          </nav>
+        </header>
       )}
-      {screen === 'loading' && <p>Loading…</p>}
+      {screen === 'loading' && <p className="loading" role="status">Loading…</p>}
       {screen === 'login' && (
         <Login
           error={error}

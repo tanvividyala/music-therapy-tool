@@ -1,0 +1,34 @@
+:root {
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+  /* App scale, ratio 1.2 from a 16px body. */
+  --text-xs: 0.833rem; --text-sm: 0.9rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem; --text-3xl: 2.074rem; --text-4xl: 2.488rem; --text-5xl: 2.986rem;
+  --text-display-s: 2.074rem; --text-display: 2.488rem; --text-section: 1.44rem; --text-title: 1.2rem; --text-lead: 1.2rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms; --dur-aura: 2400ms;
+  --color-error: oklch(48% 0.15 30); --color-success: oklch(47% 0.085 172);
+  --container: 1120px; --gutter: 40px; --gap-columns: 40px; --section-gap-s: 64px; --section-gap: 96px; --section-gap-l: 144px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+
+  /* Pastel celadon paper family, green-black ink, one mint-sage signal. */
+  --color-paper: oklch(96.8% 0.016 165); --color-paper-2: oklch(93.6% 0.024 165); --color-paper-3: oklch(90% 0.032 166);
+  --color-ink: oklch(25% 0.03 170); --color-ink-2: oklch(38% 0.03 170); --color-muted: oklch(46% 0.025 170);
+  --color-rule: oklch(86% 0.026 168); --color-field-edge: oklch(60% 0.03 170);
+  --color-accent: oklch(47% 0.085 172); --color-accent-ink: oklch(98% 0.01 165); --color-focus: oklch(49% 0.12 172);
+  --color-accent-soft: oklch(89% 0.05 172);
+
+  /* Where you are and where you are going, as ink (markers, stage words). */
+  --color-start: oklch(52% 0.12 48); --color-shift: oklch(50% 0.09 95); --color-goal: var(--color-accent);
+
+  /* The aura's two blooms. JavaScript points them at real mood colours (aura.js). */
+  --aura-from: oklch(90% 0.03 160); --aura-to: oklch(88% 0.075 165);
+
+  --font-display: "Afacad", ui-sans-serif, system-ui, sans-serif; --font-body: "Figtree", ui-sans-serif, system-ui, sans-serif; --font-outlier: var(--font-display);
+  --radius-card: 18px; --radius-control: 12px; --radius-pill: 999px; --rule-hair: 1px; --shadow-card: none;
+  --tracking-display: -0.015em;
+  --text-6xl: 3.583rem; --text-7xl: 4.3rem;
+  --color-accent-hover: oklch(41% 0.08 172);
+}
+
+/* Registered so the aura can drift between mood colours instead of jumping. */
+@property --aura-from { syntax: "<color>"; inherits: false; initial-value: oklch(90% 0.03 160); }
+@property --aura-to { syntax: "<color>"; inherits: false; initial-value: oklch(88% 0.075 165); }

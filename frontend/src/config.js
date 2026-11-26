@@ -37,3 +37,8 @@ export const CRISIS_RESOURCES = [
   { name: 'Emergency services', detail: 'Call 911 (US) or your local emergency number if you are in immediate danger' },
   { name: 'Outside the US', detail: 'Find a local helpline at findahelpline.com' },
 ]
+
+// Live lyric scores (src/tmr/lyrics_api.py). Set VITE_LYRICS_API_URL for a hosted
+// copy; locally it defaults to the service's port on this machine.
+const LOCAL = typeof window !== 'undefined' && ['127.0.0.1', 'localhost'].includes(window.location.hostname)
+export const LYRICS_API_URL = import.meta.env?.VITE_LYRICS_API_URL || (LOCAL ? 'http://127.0.0.1:8787' : '')
