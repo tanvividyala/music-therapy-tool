@@ -16,6 +16,8 @@ function distToSegment(song, a, b) {
   return Math.hypot(px - (a[0] + t * dx), py - (a[1] + t * dy))
 }
 
+const RECENT_PENALTY = 0.5
+
 const minutes = (songs) => songs.reduce((s, x) => s + x.duration_min, 0)
 
 // Texture tag soft/loud: keep songs on that side of the middle, with a small
@@ -106,13 +108,16 @@ function blendPool(tiers, catalogAll, start, goal, length, tol, taste) {
 /**
  * FR-3 / NFR-1 / NFR-5. answers = { mood: [v, a], goal, length, texture, genres }
  * options.model = 'rules' | 'learned': which mood estimate to order songs by.
- * options.personal = songs from the user's Spotify listening (spotify.listeningPool).
+ * options.personal = songs from the user's Spotify listening (spotify.tasteExplorer).
+ * options.rand = random source (e.g. Math.random) for variety between sessions; null = deterministic.
+ * options.recent = song_ids from the user's recent sessions, picked less often.
  * Returns { playlist, start, goal, elapsedMs, model, catalogSource, catalogSize, personalSize }.
  */
-export async function generatePlaylist(answers, { model = 'rules', personal = [], scoreLyrics = null, expand = null, taste = null, budgetMs = 35000 } = {}) {
+export async function generatePlaylist(answers, { model = 'rules', personal = [], scoreLyrics = null, expand = null, taste = null, budgetMs = 35000, rand = null, recent = [] } = {}) {
   const t0 = performance.now()
   let lyrics = { asked: 0, scored: 0, offline: false }
-  let first = await buildPlaylist(answers, model, personal, taste)
+  const vary = { rand, recent: new Set(recent) }
+  let first = await buildPlaylist(answers, model, personal, taste, vary)
 
   // Keep searching the user's listening until their songs cover the path, or
   // there is nothing left to search, or the time budget (NFR-1) runs out.
@@ -123,7 +128,7 @@ export async function generatePlaylist(answers, { model = 'rules', personal = []
     rounds++
     if (!added.length) continue
     personal = [...personal, ...added]
-    first = await buildPlaylist(answers, model, personal, taste)
+    first = await buildPlaylist(answers, model, personal, taste, vary)
   }
 
   // FR-3 live lyrics: score the user's songs nearest the path, fold the scores
@@ -138,7 +143,7 @@ export async function generatePlaylist(answers, { model = 'rules', personal = []
       lyrics = { asked: shortlist.length, scored: Object.values(scores).filter((x) => x.status === 'scored').length, offline: Object.keys(scores).length === 0 }
       if (!lyrics.offline) {
         personal = withLyrics(personal, scores)
-        first = await buildPlaylist(answers, model, personal, taste)
+        first = await buildPlaylist(answers, model, personal, taste, vary)
       }
     }
   }
@@ -167,7 +172,7 @@ export function withLyrics(personal, scores) {
   })
 }
 
-async function buildPlaylist(answers, model, personal, taste) {
+async function buildPlaylist(answers, model, personal, taste, { rand = null, recent = new Set() } = {}) {
   const route = ROUTES[answers.goal]
   const start = answers.mood // iso principle: start where the user actually is
   const goal = route.end
@@ -217,7 +222,9 @@ async function buildPlaylist(answers, model, personal, taste) {
   // score suits the direction of travel (calmer when the goal is lower energy
   // than now, livelier when it is higher) and that matches the user's genres.
   const direction = Math.sign(start[1] - goal[1]) // +1 calming, -1 energising
-  const quality = (s) => direction * s.calm_score + 0.3 * genreMatch(s, answers.genres || [])
-  const playlist = orderPlaylist(candidates, start, goal, length, { quality })
+  // Variety: songs from the user's last few sessions lose RECENT_PENALTY, more
+  // than the pick margin, so they only come back when nothing else fits.
+  const quality = (s) => direction * s.calm_score + 0.3 * genreMatch(s, answers.genres || []) - (recent.has(s.song_id) ? RECENT_PENALTY : 0)
+  const playlist = orderPlaylist(candidates, start, goal, length, { quality, rand })
   return { playlist, candidates, start, goal, catalog, covered }
 }

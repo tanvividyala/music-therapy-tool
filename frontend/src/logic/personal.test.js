@@ -139,6 +139,36 @@ describe('FR-3 playlists from the user\'s listening', () => {
     expect(calmShare(ranked)).toBeGreaterThan(calmShare(plain))
   })
 
+  it('random picks vary between runs but keep UT-3 (FR-3, NFR-5)', () => {
+    const start = [-0.4, 0.6], goal = [0.4, -0.4]
+    const pool = Array.from({ length: 80 }, (_, i) => {
+      const t = i / 79
+      return { song_id: i, valence: start[0] + t * 0.8 + ((i % 3) - 1) * 0.02, arousal: start[1] - t, duration_min: 3, bpm: 80, calm_score: 0 }
+    })
+    // Small seeded generator so the test is repeatable.
+    const seeded = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+    const runs = [1, 2, 3, 4, 5].map((seed) => orderPlaylist(pool, start, goal, 30, { quality: (s) => s.calm_score, rand: seeded(seed) }))
+    const closest = (p) => Math.min(...pool.map((c) => distance(c, p)))
+    for (const pl of runs) {
+      expect(distance(pl[0], start)).toBeLessThanOrEqual(closest(start) + 0.1)
+      expect(distance(pl.at(-1), goal)).toBeLessThanOrEqual(closest(goal) + 0.1)
+      for (let i = 1; i < pl.length; i++) expect(distance(pl[i], goal)).toBeLessThanOrEqual(distance(pl[i - 1], goal))
+      const total = pl.reduce((s, t) => s + t.duration_min, 0)
+      expect(total).toBeGreaterThanOrEqual(27)
+      expect(total).toBeLessThanOrEqual(33)
+    }
+    const keys = new Set(runs.map((pl) => pl.map((s) => s.song_id).join(',')))
+    expect(keys.size).toBeGreaterThan(1)
+  })
+
+  it('songs from recent sessions are held back when others fit', async () => {
+    const once = await generatePlaylist(calm(''), { personal: history() })
+    const ids = once.playlist.slice(1, -1).map((t) => t.song_id)
+    const again = await generatePlaylist(calm(''), { personal: history(), recent: ids, rand: () => 0.5 })
+    const repeats = again.playlist.slice(1, -1).filter((t) => ids.includes(t.song_id)).length
+    expect(repeats).toBeLessThan(ids.length)
+  })
+
   it('explanations name the audio traits and lyrics behind the mood', () => {
     const quietSad = { bpm: 68, valence: -0.5, arousal: -0.5, lyric_valence: -0.6, instrumental: false, source: 'top',
       features: { energy: 0.2, acousticness: 0.8, loudness: -16, valence: 0.2, mode: 0 } }

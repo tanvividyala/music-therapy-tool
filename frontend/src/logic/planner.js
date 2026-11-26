@@ -87,7 +87,15 @@ export function explain(song, stageName, start, goal) {
  *   2. pick evenly spaced songs until total time is close to length
  *   3. trim/add songs so the total is within +/- tolerance (NFR-5)
  */
-export function orderPlaylist(candidates, start, goal, length, { quality = null } = {}) {
+// Variety (rand given): a middle pick is drawn from the songs in its slice that
+// score within PICK_MARGIN of the best, and each end from the songs within
+// END_SLACK of the closest one to that end, so repeat sessions differ.
+const PICK_MARGIN = 0.3
+const END_SLACK = 0.1
+
+const randomOf = (list, rand) => list[Math.min(list.length - 1, Math.floor(rand() * list.length))]
+
+export function orderPlaylist(candidates, start, goal, length, { quality = null, rand = null } = {}) {
   const pool = [...candidates].sort((a, b) => distance(b, goal) - distance(a, goal))
   const n = pool.length
   if (n === 0) return []
@@ -105,12 +113,39 @@ export function orderPlaylist(candidates, start, goal, length, { quality = null 
   // of the exact evenly spaced one. The ends stay fixed (UT-3: first closest to
   // the start, last closest to the goal) and slices never overlap, so distance
   // to the goal still never increases.
-  if (quality && chosen.length > 2) {
-    const bounds = chosen.map((c, i) => (i === 0 ? 0 : Math.ceil((chosen[i - 1] + c) / 2)))
+  const bounds = chosen.map((c, i) => (i === 0 ? 0 : Math.ceil((chosen[i - 1] + c) / 2)))
+  const last = chosen.length - 1
+
+  // Variety at the ends: any song in the first (last) slice that is nearly as
+  // close to the start (goal) as the closest one can open (close) the session.
+  // Slices don't overlap, so distance to the goal still never increases.
+  if (rand && chosen.length >= 2) {
+    const score = (j) => (quality ? quality(pool[j]) : 0)
+    const ends = [[0, bounds[1] - 1, start], [bounds[last], n - 1, goal]]
+    const [first, end] = ends.map(([lo, hi, point]) => {
+      const slice = Array.from({ length: hi - lo + 1 }, (_, k) => lo + k)
+      const near = Math.min(...slice.map((j) => distance(pool[j], point)))
+      const ties = slice.filter((j) => distance(pool[j], point) <= near + END_SLACK)
+      const best = Math.max(...ties.map(score))
+      return randomOf(ties.filter((j) => score(j) >= best - PICK_MARGIN), rand)
+    })
+    chosen[0] = first
+    chosen[last] = end
+  }
+
+  if ((quality || rand) && chosen.length > 2) {
     chosen = chosen.map((c, i) => {
-      if (i === 0 || i === chosen.length - 1) return c
+      if (i === 0 || i === last) return c
       const lo = Math.max(bounds[i], chosen[0] + 1)
-      const hi = Math.min(i + 1 < chosen.length ? bounds[i + 1] - 1 : n - 2, chosen[chosen.length - 1] - 1)
+      const hi = Math.min(i + 1 < chosen.length ? bounds[i + 1] - 1 : n - 2, chosen[last] - 1)
+      if (rand) {
+        // Draw from the near-best songs in this slice instead of always the top one.
+        const slice = Array.from({ length: Math.max(0, hi - lo + 1) }, (_, k) => lo + k)
+        if (!slice.length) return c
+        const score = (j) => (quality ? quality(pool[j]) : 0)
+        const best = Math.max(...slice.map(score))
+        return randomOf(slice.filter((j) => score(j) >= best - PICK_MARGIN), rand)
+      }
       let best = c
       for (let j = lo; j <= hi; j++) if (quality(pool[j]) > quality(pool[best])) best = j
       return best
@@ -141,7 +176,7 @@ export function orderPlaylist(candidates, start, goal, length, { quality = null 
   })
 }
 
-/** FR-6 pilot "shuffled" condition: same tracks, random order. */
+/** FR-6 pilot "shuffled" condition: same tracks, random order. SHELVED: unused while the pilot is paused. */
 export function shuffled(playlist, rand = Math.random) {
   const out = [...playlist]
   for (let i = out.length - 1; i > 0; i--) {

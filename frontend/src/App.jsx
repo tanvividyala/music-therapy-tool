@@ -109,11 +109,15 @@ export default function App() {
     setBusy(true)
     try {
       const condition = answers.consent ? store.nextCondition(user.id) : 'ordered'
-      // FR-3: the user's own listening leads when they are signed in to Spotify.
       // FR-3: the user's own listening leads when they are signed in to Spotify,
       // searched in rounds until it covers the mood path.
       const taste = user.spotify ? await spotify.tasteExplorer(estimateMood, answers.genres).start().catch(() => null) : null
+      // Variety: random picks among near-equal songs, and songs from the last
+      // three sessions are held back unless nothing else fits.
+      const recent = store.getSessions(user.id).slice(-3).flatMap((s) => (s.items || []).map((it) => it.song_id))
       const res = await generatePlaylist(answers, {
+        rand: Math.random,
+        recent,
         model: moodModel,
         personal: taste ? [...taste.songs] : [],
         expand: taste ? () => taste.more().catch(() => null) : null,
