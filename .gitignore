@@ -19,3 +19,6 @@ __pycache__/
 
 # Datasets dropped straight into data/ (not ours to redistribute)
 data/*.csv
+
+# Saved models (built by the notebook)
+models/
